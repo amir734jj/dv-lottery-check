@@ -1,0 +1,17 @@
+{% extends "layout.jinja" %}
+
+{% block body %}
+  <h3> Solve Captcha </h3>
+  <hr />
+
+<img src="data:image/png;base64, {{user.captcha_image}}" alt="captcha" style="margin: 2rem" />
+
+  <form action="/check/{{ user.user_id }}" method="POST">
+    <div class="form-group">
+      <label for="captcha">Captcha:</label>
+      <input type="captcha" class="form-control" id="captcha" placeholder="Enter captcha result" name="captcha">
+    </div>
+    <button type="submit" class="btn btn-default">Submit</button>
+  </form>
+
+{% endblock %}

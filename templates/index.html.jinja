@@ -1,0 +1,44 @@
+{% extends "layout.jinja" %}
+
+{% block body %}
+  <h3> View Users </h3>
+
+  <div class="pull-right" style="margin-bottom: 2rem">
+    <a href="/user/create" class="btn btn-default"> Create User </a>
+  </div>
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>lastname</th>
+        <th>confirmation_number</th>
+        <th>birth_year</th>
+        <th>check</th>
+        <th>last update</th>
+      </tr>
+    </thead>
+    <tbody>
+{%for user in users%}
+      <tr>
+        <td>{{ user.lastname }}</td>
+        <td>{{ user.confirmation_number }}</td>
+        <td>{{ user.birth_year }}</td>
+        <td>
+            {% if user.last_update %}
+                {{ user.last_update.strftime("%Y-%m-%d %H:%M") }}
+            {% else %}
+                {{ user.last_update }}
+            {% endif %}
+        </td>
+        <td>
+        {% if user.screenshot %}
+          <a class="btn btn-default" href="/user/screenshot/{{user.user_id}}" style="margin-right: 1rem"> screenshot </button>
+        {% endif %}
+
+          <a class="btn btn-primary" href="/check/{{user.user_id}}">check</button>
+        </td>
+      </tr>
+{%endfor%}
+    </tbody>
+  </table>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "layout.jinja" %}
+
+{% block body %}
+  <h3> Create User </h3>
+  <hr />
+
+  <form action="/user/create" method="POST">
+    <div class="form-group">
+      <label for="confirmation_number">Confirmation number:</label>
+      <input type="text" class="form-control" id="confirmation_number" placeholder="Enter confirmation number" name="confirmation_number" />
+    </div>
+
+    <div class="form-group">
+      <label for="lastname">Lastname:</label>
+      <input type="text" class="form-control" id="lastname" placeholder="Enter lastname" name="lastname" />
+    </div>
+
+    <div class="form-group">
+      <label for="birth_year">Birth year:</label>
+      <input type="number" class="form-control" id="birth_year" placeholder="Enter birth year" name="birth_year" min="1950" max="2000" />
+    </div>
+
+    <button type="submit" class="btn btn-default">Submit</button>
+  </form>
+
+{% endblock %}
