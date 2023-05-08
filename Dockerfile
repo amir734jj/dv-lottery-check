@@ -5,7 +5,6 @@ WORKDIR /app
 RUN apk update && apk upgrade && \
     apk add --no-cache gcc musl-dev
 RUN apk add --no-cache \
-    chromium \
     nss \
     freetype \
     harfbuzz \
