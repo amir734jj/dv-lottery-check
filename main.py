@@ -5,22 +5,19 @@ import time
 from os import environ
 from threading import Thread
 
-from waitress import serve
 from flask import Flask, render_template, request, url_for, redirect, send_file
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from sqlalchemy import create_engine, Boolean, Column, String, Text, Integer, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
+from waitress import serve
 
 SELENIUM_WAIT_SECONDS = 10
 
 # chromedriver config
-chromedriver_path = '/usr/local/bin/chromedriver'
 o = Options()
 o.add_argument('--headless')
 o.add_argument('--disable-gpu')
@@ -80,7 +77,7 @@ def check(user_id):
     with Session() as session:
         user = session.get(User, user_id)
 
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=o)
+        driver = webdriver.Chrome(options=o)
         try:
             driver.get("https://dvprogram.state.gov/")
 
