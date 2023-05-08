@@ -2,8 +2,10 @@ import base64
 import datetime
 import io
 import time
+from os import environ
 from threading import Thread
 
+from waitress import serve
 from flask import Flask, render_template, request, url_for, redirect, send_file
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,8 +13,19 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from sqlalchemy import create_engine, Boolean, Column, String, Text, Integer, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 SELENIUM_WAIT_SECONDS = 10
+
+# chromedriver config
+chromedriver_path = '/usr/local/bin/chromedriver'
+o = Options()
+o.add_argument('--headless')
+o.add_argument('--disable-gpu')
+o.add_argument('--no-sandbox')
+o.add_argument('--window-size=1200x600')
 
 # Selenium CSS selectors
 confirmation_elem = (By.CSS_SELECTOR, "#txtCN")
@@ -27,9 +40,12 @@ continue_elem = (By.CSS_SELECTOR, "#main > div:nth-child(2) > div > p.text-cente
 
 # Flask app
 app = Flask(__name__, template_folder="templates")
-app.config['SQLALCHEMY_DATABASE_URI'] = ''
 
-engine = create_engine('sqlite:///db.sqlite')
+DATABASE_URL = 'sqlite:///db.sqlite'
+if environ.get('DATABASE_URL') is not None:
+    DATABASE_URL = environ.get('DATABASE_URL')
+
+engine = create_engine(DATABASE_URL)
 
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
@@ -44,13 +60,13 @@ def wait_until(some_predicate, timeout, period=0.25, *args, **kwargs):
     return False
 
 
-def clean_captcha(user_id):
+def clean_captcha(user_id, check_result=True):
     with Session() as session:
         session.query(User). \
             update({"user_id": user_id,
                     'captcha_image': '',
                     "captcha_result": '',
-                    "check_result": False})
+                    "check_result": check_result})
         session.commit()
 
 
@@ -64,7 +80,7 @@ def check(user_id):
     with Session() as session:
         user = session.get(User, user_id)
 
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=o)
         try:
             driver.get("https://dvprogram.state.gov/")
 
@@ -133,7 +149,7 @@ def check_captcha(user_id):
     with Session() as session:
         user = session.get(User, user_id)
         if request.method == 'GET':
-            clean_captcha(user_id)
+            clean_captcha(user_id, check_result=False)
 
             t = Thread(target=check, args=[user_id])
             t.start()
@@ -154,8 +170,7 @@ def check_captcha(user_id):
                               datetime.timedelta(seconds=5)):
                 return "Record not found", 400
 
-            session.refresh(user)
-            return render_template('check.html.jinja', user=user)
+            return redirect(url_for('index'))
 
 
 @app.route('/user/create', methods=['GET', 'POST'])
@@ -186,4 +201,6 @@ def user_screenshot(user_id):
 
 with app.app_context():
     Base.metadata.create_all(bind=engine)
-    app.run()
+    port = 5000 if environ.get("PORT") is None else int(environ.get("PORT"))
+    print("listening to port: %s" % port)
+    serve(app, host="0.0.0.0", port=port)

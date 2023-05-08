@@ -1,3 +1,0 @@
-selenium
-flask
-flask-sqlalchemy

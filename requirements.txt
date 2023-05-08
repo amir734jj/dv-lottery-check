@@ -1,0 +1,7 @@
+selenium
+flask
+flask-sqlalchemy
+psycopg2
+SQLAlchemy
+waitress
+webdriver-manager
