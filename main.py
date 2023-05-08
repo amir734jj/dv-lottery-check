@@ -14,15 +14,16 @@ from selenium.webdriver.support.wait import WebDriverWait
 from sqlalchemy import create_engine, Boolean, Column, String, Text, Integer, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
 from waitress import serve
+from pyvirtualdisplay import Display
 
 SELENIUM_WAIT_SECONDS = 10
 
+display = Display(visible=False, size=(1200, 600))
+display.start()
+
 # chromedriver config
-o = Options()
-o.add_argument('--headless')
-o.add_argument('--disable-gpu')
-o.add_argument('--no-sandbox')
-o.add_argument('--window-size=1200x600')
+chrome_options = Options()
+chrome_options.add_argument("--no-sandbox")
 
 # Selenium CSS selectors
 confirmation_elem = (By.CSS_SELECTOR, "#txtCN")
@@ -77,7 +78,7 @@ def check(user_id):
     with Session() as session:
         user = session.get(User, user_id)
 
-        driver = webdriver.Chrome(options=o)
+        driver = webdriver.Chrome(options=chrome_options)
         try:
             driver.get("https://dvprogram.state.gov/")
 
@@ -201,3 +202,4 @@ with app.app_context():
     port = 5000 if environ.get("PORT") is None else int(environ.get("PORT"))
     print("listening to port: %s" % port)
     serve(app, host="0.0.0.0", port=port)
+    display.stop()

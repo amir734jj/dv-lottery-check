@@ -2,11 +2,25 @@ FROM python:alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev
-RUN apk add libpq-dev chromium chromium-chromedriver
+RUN apk update && apk upgrade && \
+    apk add --no-cache gcc musl-dev
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+RUN apk add --no-cache \
+    libexif \
+    udev \
+    xvfb \
+    libpq-dev \
+    chromium \
+    chromium-chromedriver
 
 RUN pip install --upgrade pip
-RUN pip install selenium
+RUN pip install selenium pyvirtualdisplay
 
 ENV CHROME_BIN=/usr/bin/chromium-browser \
     CHROME_PATH=/usr/lib/chromium/
