@@ -142,7 +142,7 @@ def index():
         return render_template('index.html.jinja', users=session.query(User).all())
 
 
-@app.route('/check/<user_id>', methods=['GET', 'POST'])
+@app.route('/check/<int:user_id>', methods=['GET', 'POST'])
 def check_captcha(user_id):
     with Session() as session:
         user = session.get(User, user_id)
@@ -187,7 +187,7 @@ def create_user():
             return redirect(url_for('index'))
 
 
-@app.route('/user/screenshot/<user_id>', methods=['GET'])
+@app.route('/user/screenshot/<int:user_id>', methods=['GET'])
 def user_screenshot(user_id):
     with Session() as session:
         return send_file(
