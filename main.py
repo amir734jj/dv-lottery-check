@@ -125,7 +125,7 @@ def check(user_id):
 
 class User(Base):
     __tablename__ = 'users'
-    user_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, primary_key=True, autoincrement=True)
     lastname = Column(String(100))
     confirmation_number = Column(String(100))
     birth_year = Column(String(100))
