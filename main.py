@@ -34,7 +34,8 @@ captcha_image = (By.CSS_SELECTOR, "#c_checkstatus_uccaptcha30_CaptchaImage")
 submit = (By.CSS_SELECTOR, "#btnCSubmit")
 check_status_elem = (By.CSS_SELECTOR, "#maincontent > div:nth-child(3) > div > div > div.panel-body.p5555 > "
                                       "div.col-xs-12.col-sm-12.text-center > div > p:nth-child(2) > a")
-continue_elem = (By.CSS_SELECTOR, "#main > div:nth-child(2) > div > p.text-center > a")
+continue_elem = (
+    By.CSS_SELECTOR, "#main > div:nth-child(2) > div > p.text-center > a")
 
 # Flask app
 app = Flask(__name__, template_folder="templates")
@@ -60,11 +61,11 @@ def wait_until(some_predicate, timeout, period=0.25, *args, **kwargs):
 
 def clean_captcha(user_id, check_result=True):
     with Session() as session:
-        session.query(User). \
-            update({"user_id": user_id,
-                    'captcha_image': '',
+        session.query(User) \
+            .filter_by(user_id=user_id) \
+            .update({'captcha_image': '',
                     "captcha_result": '',
-                    "check_result": check_result})
+                     "check_result": check_result})
         session.commit()
 
 
@@ -95,12 +96,14 @@ def check(user_id):
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
                 .until(expected_conditions.presence_of_element_located(lastname_elem))
 
-            driver.find_element(*confirmation_elem).send_keys(user.confirmation_number)
+            driver.find_element(
+                *confirmation_elem).send_keys(user.confirmation_number)
             driver.find_element(*lastname_elem).send_keys(user.lastname)
             driver.find_element(*year_elem).send_keys(user.birth_year)
 
-            session.query(User). \
-                update({"user_id": user_id, 'captcha_image': driver.find_element(*captcha_image).screenshot_as_base64})
+            session.query(User) \
+                .filter_by(user_id=user_id) \
+                .update({'captcha_image': driver.find_element(*captcha_image).screenshot_as_base64})
             session.commit()
 
             if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_result"),
@@ -112,11 +115,11 @@ def check(user_id):
             driver.find_element(*submit).click()
             screenshot = driver.get_screenshot_as_base64()
 
-            session.query(User). \
-                update({"user_id": user_id,
-                        "check_result": True,
+            session.query(User) \
+                .filter_by(user_id=user_id) \
+                .update({"check_result": True,
                         "screenshot": screenshot,
-                        "last_update": datetime.datetime.utcnow()})
+                         "last_update": datetime.datetime.utcnow()})
             session.commit()
         finally:
             clean_captcha(user_id)
@@ -160,8 +163,9 @@ def check_captcha(user_id):
             return render_template('captcha.html.jinja', user=user)
         else:
             captcha_result = request.form.get('captcha')
-            session.query(User). \
-                update({"user_id": user_id, 'captcha_result': captcha_result})
+            session.query(User) \
+                .filter_by(user_id=user_id) \
+                .update({'captcha_result': captcha_result})
             session.commit()
 
             if not wait_until(lambda: check_user_property_is_set(user_id, "check_result"),
@@ -191,7 +195,8 @@ def create_user():
 def user_screenshot(user_id):
     with Session() as session:
         return send_file(
-            io.BytesIO(base64.b64decode(session.get(User, user_id).screenshot)),
+            io.BytesIO(base64.b64decode(
+                session.get(User, user_id).screenshot)),
             download_name='screenshot.png',
             mimetype='image/png'
         )
