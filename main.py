@@ -79,8 +79,10 @@ def check(user_id):
     with Session() as session:
         user = session.get(User, user_id)
 
-        driver = webdriver.Chrome(options=chrome_options)
         try:
+            driver = webdriver.Chrome(options=chrome_options)
+            print("current chromedriver session is {}".format(driver.session_id))
+
             driver.get("https://dvprogram.state.gov/")
 
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
@@ -124,6 +126,7 @@ def check(user_id):
         finally:
             clean_captcha(user_id)
             driver.close()
+            driver.quit()
 
 
 class User(Base):
