@@ -3,7 +3,14 @@ FROM python:alpine
 WORKDIR /app
 
 RUN apk update && apk upgrade && \
-    apk add --no-cache gcc musl-dev
+    apk add --no-cache \
+    gcc \
+    musl-dev \
+    jpeg-dev \
+    zlib-dev \
+    libjpeg \
+    make \
+    g++
 RUN apk add --no-cache \
     nss \
     freetype \

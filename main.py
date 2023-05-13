@@ -15,6 +15,8 @@ from sqlalchemy import create_engine, Boolean, Column, String, Text, Integer, Da
 from sqlalchemy.orm import sessionmaker, declarative_base
 from waitress import serve
 from pyvirtualdisplay import Display
+from PIL import Image, ImageDraw, ImageFont
+from matplotlib import font_manager
 
 SELENIUM_WAIT_SECONDS = 10
 
@@ -50,6 +52,23 @@ Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
 
+def add_text_to_image(base64_img, text):
+    font = font_manager.FontProperties(family='monospace', weight='bold')
+    file = font_manager.findfont(font)
+    font = ImageFont.truetype(file, size=30)
+
+    img = Image.open(io.BytesIO(base64.b64decode(base64_img)))
+
+    img_result = ImageDraw.Draw(img)
+    img_result.text((100, 300), text, fill=(255, 0, 0), font=font)
+
+    buff = io.BytesIO()
+    img.save(buff, format="PNG")
+    img_str = base64.encodebytes(buff.getvalue()).decode()
+
+    return img_str
+
+
 def wait_until(some_predicate, timeout, period=0.25, *args, **kwargs):
     must_end = datetime.datetime.now() + timeout
     while datetime.datetime.now() < must_end:
@@ -78,11 +97,10 @@ def check_user_property_is_set(user_id, prop):
 def check(user_id):
     with Session() as session:
         user = session.get(User, user_id)
+        driver = webdriver.Chrome(options=chrome_options)
+        print("current chromedriver session is {}".format(driver.session_id))
 
         try:
-            driver = webdriver.Chrome(options=chrome_options)
-            print("current chromedriver session is {}".format(driver.session_id))
-
             driver.get("https://dvprogram.state.gov/")
 
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
@@ -116,11 +134,12 @@ def check(user_id):
             driver.find_element(*captcha).send_keys(user.captcha_result)
             driver.find_element(*submit).click()
             screenshot = driver.get_screenshot_as_base64()
+            overlay_text = f"{user.lastname} / {user.birth_year} @ {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
             session.query(User) \
                 .filter_by(user_id=user_id) \
                 .update({"check_result": True,
-                        "screenshot": screenshot,
+                        "screenshot": add_text_to_image(screenshot, overlay_text),
                          "last_update": datetime.datetime.utcnow()})
             session.commit()
         finally:
@@ -145,7 +164,7 @@ class User(Base):
 @app.route('/')
 def index():
     with Session() as session:
-        return render_template('index.html.jinja', users=session.query(User).all())
+        return render_template('index.html.jinja', users=session.query(User).order_by(User.lastname).all())
 
 
 @app.route('/check/<int:user_id>', methods=['GET', 'POST'])
@@ -197,9 +216,9 @@ def create_user():
 @app.route('/user/screenshot/<int:user_id>', methods=['GET'])
 def user_screenshot(user_id):
     with Session() as session:
+        user = session.get(User, user_id)
         return send_file(
-            io.BytesIO(base64.b64decode(
-                session.get(User, user_id).screenshot)),
+            io.BytesIO(base64.b64decode(user.screenshot)),
             download_name='screenshot.png',
             mimetype='image/png'
         )

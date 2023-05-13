@@ -5,3 +5,5 @@ psycopg2
 SQLAlchemy
 waitress
 pyvirtualdisplay
+Pillow
+matplotlib
