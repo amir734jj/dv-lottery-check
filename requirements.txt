@@ -6,4 +6,3 @@ SQLAlchemy
 waitress
 pyvirtualdisplay
 Pillow
-matplotlib

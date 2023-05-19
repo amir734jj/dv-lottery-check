@@ -16,7 +16,6 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from waitress import serve
 from pyvirtualdisplay import Display
 from PIL import Image, ImageDraw, ImageFont
-from matplotlib import font_manager
 
 SELENIUM_WAIT_SECONDS = 10
 
@@ -26,6 +25,7 @@ display.start()
 # chromedriver config
 chrome_options = Options()
 chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument('--disable-dev-shm-usage')        
 
 # Selenium CSS selectors
 confirmation_elem = (By.CSS_SELECTOR, "#txtCN")
@@ -53,14 +53,12 @@ Session = sessionmaker(bind=engine)
 
 
 def add_text_to_image(base64_img, text):
-    font = font_manager.FontProperties(family='monospace', weight='bold')
-    file = font_manager.findfont(font)
-    font = ImageFont.truetype(file, size=30)
+    font = ImageFont.load_default()
 
     img = Image.open(io.BytesIO(base64.b64decode(base64_img)))
 
     img_result = ImageDraw.Draw(img)
-    img_result.text((100, 300), text, fill=(255, 0, 0), font=font)
+    img_result.text((100, 210), text, fill=(255, 0, 0), font=font)
 
     buff = io.BytesIO()
     img.save(buff, format="PNG")
@@ -130,6 +128,9 @@ def check(user_id):
                               datetime.timedelta(seconds=60)):
                 return False
 
+            WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
+                .until(expected_conditions.presence_of_element_located(submit))
+
             session.refresh(user)
             driver.find_element(*captcha).send_keys(user.captcha_result)
             driver.find_element(*submit).click()
@@ -144,7 +145,6 @@ def check(user_id):
             session.commit()
         finally:
             clean_captcha(user_id)
-            driver.close()
             driver.quit()
 
 
