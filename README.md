@@ -6,5 +6,6 @@ Environment variables:
 - PORT
 
 ```
+// sudo apt-get install libpq-dev xvfb
 pip install -r requirements.txt
 ```

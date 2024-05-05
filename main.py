@@ -22,7 +22,7 @@ SELENIUM_WAIT_SECONDS = 10
 display = Display(visible=False, size=(1200, 600))
 display.start()
 
-# chromedriver config
+# chrome driver config
 chrome_options = Options()
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument('--disable-dev-shm-usage')        
