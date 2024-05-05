@@ -7,3 +7,4 @@ waitress
 pyvirtualdisplay
 Pillow
 python-dotenv
+requests
