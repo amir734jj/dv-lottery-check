@@ -11,6 +11,7 @@
   <thead>
     <tr>
       <th>lastname</th>
+      <th>confirmation</th>
       <th>birth year</th>
       <th>last check</th>
       <th>last update</th>
@@ -18,8 +19,12 @@
   </thead>
   <tbody>
     {%for user in users%}
+    {% set cf_number = user.confirmation_number %}
+    {% set starred_cf_number = cf_number[:4] + '*' * (cf_number|length - 8) + cf_number[-4:] %}
+
     <tr>
-      <td>{{ user.lastname }}</td>
+      <td>{{ user.lastname|upper }}</td>
+      <td>{{ starred_cf_number }}</td>
       <td>{{ user.birth_year }}</td>
       <td>
         {% if user.last_update %}
