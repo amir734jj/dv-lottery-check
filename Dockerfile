@@ -2,34 +2,32 @@ FROM python:alpine
 
 WORKDIR /app
 
-RUN apk update && apk upgrade && \
-    apk add --no-cache \
-    gcc \
-    musl-dev \
-    jpeg-dev \
-    zlib-dev \
-    libjpeg \
-    make \
-    g++
+RUN apk update && apk upgrade
 RUN apk add --no-cache \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
-RUN apk add --no-cache \
-    libexif \
-    udev \
-    xvfb \
-    libpq-dev \
-    chromium \
-    chromium-chromedriver
+  make \
+  gcc \
+  g++ \
+  musl-dev \
+  ca-certificates \
+  jpeg-dev \
+  zlib-dev \
+  libjpeg \
+  nss \
+  freetype \
+  harfbuzz \
+  ttf-freefont \
+  libexif \
+  udev \
+  xvfb \
+  libpq-dev \
+  chromium \
+  chromium-chromedriver
 
 RUN pip install --upgrade pip
 RUN pip install selenium pyvirtualdisplay
 
-ENV CHROME_BIN=/usr/bin/chromium-browser \
-    CHROME_PATH=/usr/lib/chromium/
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_PATH=/usr/lib/chromium/
 
 COPY . .
 
