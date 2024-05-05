@@ -8,3 +8,4 @@ pyvirtualdisplay
 Pillow
 python-dotenv
 requests
+pytz
