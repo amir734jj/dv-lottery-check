@@ -6,3 +6,4 @@ SQLAlchemy
 waitress
 pyvirtualdisplay
 Pillow
+python-dotenv

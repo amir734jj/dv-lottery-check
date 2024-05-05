@@ -34,7 +34,7 @@
         {% endif %}
       </td>
       <td>
-        {% if user.screenshot %}
+        {% if (user.screenshot and user.check_result) %}
         <a class="btn btn-default" href="/user/screenshot/{{user.user_id}}" style="margin-right: 1rem; "> screenshot
           </button>
           {% endif %}

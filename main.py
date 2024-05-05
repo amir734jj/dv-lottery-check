@@ -1,10 +1,7 @@
-import base64
-import datetime
-import io
-import time
+import base64, datetime, io, time, requests, pytz
 from os import environ
 from threading import Thread
-
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, url_for, redirect, send_file
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -17,9 +14,12 @@ from waitress import serve
 from pyvirtualdisplay import Display
 from PIL import Image, ImageDraw, ImageFont
 
-SELENIUM_WAIT_SECONDS = 10
+# Load environment variables
+load_dotenv()
 
-display = Display(visible=False, size=(1200, 600))
+SELENIUM_WAIT_SECONDS = 30
+
+display = Display(visible=True, size=(1200, 600))
 display.start()
 
 # chrome driver config
@@ -38,6 +38,8 @@ check_status_elem = (By.CSS_SELECTOR, "#maincontent > div:nth-child(3) > div > d
                                       "div.col-xs-12.col-sm-12.text-center > div > p:nth-child(2) > a")
 continue_elem = (
     By.CSS_SELECTOR, "#main > div:nth-child(2) > div > p.text-center > a")
+captcha_failed = (By.CSS_SELECTOR, "#ValidatorCaptchaCaptchaCS")
+result_container = (By.CSS_SELECTOR, "#main > div > div > p:nth-child(1)")
 
 # Flask app
 app = Flask(__name__, template_folder="templates")
@@ -51,6 +53,25 @@ engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
+
+def solve_captcha(base64_img):
+  url = 'https://api.capsolver.com/createTask'
+
+  data = {
+    "clientKey": environ.get("CAPTCHA_API"),
+    "task": {
+        "type": "ImageToTextTask",
+        "body": base64_img
+    }
+  }
+
+  response = requests.post(url, json=data)
+
+  if response.status_code == 200:
+      result = response.json()
+      return result["solution"]["text"]
+  else:
+      return None
 
 def add_text_to_image(base64_img, text):
     font = ImageFont.load_default()
@@ -86,10 +107,10 @@ def clean_captcha(user_id, check_result=True):
         session.commit()
 
 
-def check_user_property_is_set(user_id, prop):
+def check_user_property_is_set(user_id, *props):
     with Session() as session:
         user = session.get(User, user_id)
-        return bool(getattr(user, prop))
+        return any(map(lambda prop: bool(getattr(user, prop)), props))
 
 
 def check(user_id):
@@ -101,16 +122,19 @@ def check(user_id):
         try:
             driver.get("https://dvprogram.state.gov/")
 
+            # Check status disclosure page
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
                 .until(expected_conditions.presence_of_element_located(check_status_elem))
             elem = driver.find_element(*check_status_elem)
             elem.click()
 
+            # Welcome page
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
                 .until(expected_conditions.presence_of_element_located(continue_elem))
             elem = driver.find_element(*continue_elem)
             elem.click()
 
+            # Form page
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
                 .until(expected_conditions.presence_of_element_located(lastname_elem))
 
@@ -119,29 +143,59 @@ def check(user_id):
             driver.find_element(*lastname_elem).send_keys(user.lastname)
             driver.find_element(*year_elem).send_keys(user.birth_year)
 
-            session.query(User) \
-                .filter_by(user_id=user_id) \
-                .update({'captcha_image': driver.find_element(*captcha_image).screenshot_as_base64})
-            session.commit()
+            captcha_base64 = driver.find_element(*captcha_image).screenshot_as_base64
 
-            if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_result"),
-                              datetime.timedelta(seconds=60)):
-                return False
+            # Use api to solve captcha
+            possible_captcha_result = solve_captcha(captcha_base64)
+            
+            # If api was able to solve captcha
+            if possible_captcha_result:
+              WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
+                .until(expected_conditions.presence_of_element_located(submit))
+                
+              driver.find_element(*captcha).send_keys(possible_captcha_result)
+              driver.find_element(*submit).click()
+            
+            # Retry manually
+            if not possible_captcha_result or (len(driver.find_elements(*captcha_failed)) > 0 and driver.find_element(*captcha_failed).is_displayed()):
+              captcha_base64 = driver.find_element(*captcha_image).screenshot_as_base64
+              session.query(User) \
+                  .filter_by(user_id=user_id) \
+                  .update({'captcha_image': captcha_base64})
+              session.commit()
+              
+              if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_result"),
+                                datetime.timedelta(seconds=60)):
+                  return False
 
-            WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
+              WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
                 .until(expected_conditions.presence_of_element_located(submit))
 
+              # Manually captcha result
+              driver.find_element(*captcha).send_keys(user.captcha_result)
+              
+              # May require submitting twice after captcha fail
+              submit_retry = 2
+              while submit_retry > 0 and len(driver.find_elements(*submit)) > 0:
+                driver.find_element(*submit).click()
+                submit_retry = submit_retry - 1
+            else:
+              session.query(User) \
+                .filter_by(user_id=user_id) \
+                .update({'captcha_result': possible_captcha_result})
+
+            WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
+              .until(expected_conditions.presence_of_element_located(result_container))
+
             session.refresh(user)
-            driver.find_element(*captcha).send_keys(user.captcha_result)
-            driver.find_element(*submit).click()
             screenshot = driver.get_screenshot_as_base64()
             overlay_text = f"{user.lastname} / {user.birth_year} @ {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
             session.query(User) \
                 .filter_by(user_id=user_id) \
-                .update({"check_result": True,
+                .update({"check_result": driver.find_element(*result_container) is not None,
                         "screenshot": add_text_to_image(screenshot, overlay_text),
-                         "last_update": datetime.datetime.utcnow()})
+                         "last_update": datetime.datetime.now(tz=pytz.utc)})
             session.commit()
         finally:
             clean_captcha(user_id)
@@ -177,12 +231,15 @@ def check_captcha(user_id):
             t = Thread(target=check, args=[user_id])
             t.start()
 
-            if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_image"),
-                              datetime.timedelta(seconds=15)):
+            if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_image", "captcha_result"),
+                              datetime.timedelta(seconds=25)):
                 return "Record not found", 400
 
             session.refresh(user)
-            return render_template('captcha.html.jinja', user=user)
+            if user.captcha_result:
+              return redirect(url_for('index'))
+            else:
+              return render_template('captcha.html.jinja', user=user)
         else:
             captcha_result = request.form.get('captcha')
             session.query(User) \
@@ -191,7 +248,7 @@ def check_captcha(user_id):
             session.commit()
 
             if not wait_until(lambda: check_user_property_is_set(user_id, "check_result"),
-                              datetime.timedelta(seconds=5)):
+                              datetime.timedelta(seconds=60)):
                 return "Record not found", 400
 
             return redirect(url_for('index'))
