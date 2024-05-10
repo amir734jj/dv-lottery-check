@@ -38,7 +38,6 @@ check_status_elem = (By.CSS_SELECTOR, "#maincontent > div:nth-child(3) > div > d
                                       "div.col-xs-12.col-sm-12.text-center > div > p:nth-child(2) > a")
 continue_elem = (
     By.CSS_SELECTOR, "#main > div:nth-child(2) > div > p.text-center > a")
-captcha_failed = (By.CSS_SELECTOR, "#ValidatorCaptchaCaptchaCS")
 result_container = (By.CSS_SELECTOR, "#main > div > div > p:nth-child(1)")
 
 # Flask app
@@ -52,26 +51,6 @@ engine = create_engine(DATABASE_URL)
 
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
-
-
-def solve_captcha(base64_img):
-  url = 'https://api.capsolver.com/createTask'
-
-  data = {
-    "clientKey": environ.get("CAPTCHA_API"),
-    "task": {
-        "type": "ImageToTextTask",
-        "body": base64_img
-    }
-  }
-
-  response = requests.post(url, json=data)
-
-  if response.status_code == 200:
-      result = response.json()
-      return result["solution"]["text"]
-  else:
-      return None
 
 def add_text_to_image(base64_img, text):
     font = ImageFont.load_default()
@@ -144,45 +123,23 @@ def check(user_id):
             driver.find_element(*year_elem).send_keys(user.birth_year)
 
             captcha_base64 = driver.find_element(*captcha_image).screenshot_as_base64
-
-            # Use api to solve captcha
-            possible_captcha_result = solve_captcha(captcha_base64)
             
-            # If api was able to solve captcha
-            if possible_captcha_result:
-              WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
-                .until(expected_conditions.presence_of_element_located(submit))
-                
-              driver.find_element(*captcha).send_keys(possible_captcha_result)
-              driver.find_element(*submit).click()
-            
-            # Retry manually
-            if not possible_captcha_result or (len(driver.find_elements(*captcha_failed)) > 0 and driver.find_element(*captcha_failed).is_displayed()):
-              captcha_base64 = driver.find_element(*captcha_image).screenshot_as_base64
-              session.query(User) \
-                  .filter_by(user_id=user_id) \
-                  .update({'captcha_image': captcha_base64})
-              session.commit()
-              
-              if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_result"),
-                                datetime.timedelta(seconds=60)):
-                  return False
-
-              WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
-                .until(expected_conditions.presence_of_element_located(submit))
-
-              # Manually captcha result
-              driver.find_element(*captcha).send_keys(user.captcha_result)
-              
-              # May require submitting twice after captcha fail
-              submit_retry = 2
-              while submit_retry > 0 and len(driver.find_elements(*submit)) > 0:
-                driver.find_element(*submit).click()
-                submit_retry = submit_retry - 1
-            else:
-              session.query(User) \
+            session.query(User) \
                 .filter_by(user_id=user_id) \
-                .update({'captcha_result': possible_captcha_result})
+                .update({'captcha_image': captcha_base64})
+            session.commit()
+            
+            if not wait_until(lambda: check_user_property_is_set(user_id, "captcha_result"),
+                              datetime.timedelta(seconds=60)):
+                return False
+
+            WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
+              .until(expected_conditions.presence_of_element_located(submit))
+
+            # Manually captcha result
+            driver.find_element(*captcha).send_keys(user.captcha_result)
+            
+            driver.find_element(*submit).click()
 
             WebDriverWait(driver, SELENIUM_WAIT_SECONDS) \
               .until(expected_conditions.presence_of_element_located(result_container))
