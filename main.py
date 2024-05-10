@@ -44,7 +44,7 @@ result_container = (By.CSS_SELECTOR, "#main > div > div > p:nth-child(1)")
 app = Flask(__name__, template_folder="templates")
 
 DATABASE_URL = 'sqlite:///db.sqlite'
-if environ.get('DATABASE_URL') is not None:
+if environ.get('DATABASE_URL'):
     DATABASE_URL = environ.get('DATABASE_URL')
 
 engine = create_engine(DATABASE_URL)
