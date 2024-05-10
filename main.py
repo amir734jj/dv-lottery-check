@@ -19,7 +19,7 @@ load_dotenv()
 
 SELENIUM_WAIT_SECONDS = 30
 
-display = Display(visible=True, size=(1200, 600))
+display = Display(visible=False, size=(1200, 600))
 display.start()
 
 # chrome driver config
