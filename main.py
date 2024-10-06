@@ -2,7 +2,7 @@ import base64, datetime, io, time, requests, pytz
 from os import environ
 from threading import Thread
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, url_for, redirect, send_file
+from flask import Flask, render_template, request, url_for, redirect, send_file, jsonify
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -173,10 +173,27 @@ class User(Base):
 
 
 @app.route('/')
-def index():
+@app.route('/<int:year>')
+def index(year = None):
     with Session() as session:
-        return render_template('index.html.jinja', users=session.query(User).order_by(User.lastname).all())
+        users = session.query(User).all()
+        
+        if year is None:
+          year = max(map(lambda x: int(x.confirmation_number[:4]), users))
+        
+        users = session.query(User) \
+                       .filter(User.confirmation_number.startswith(year)) \
+                       .order_by(User.lastname) \
+                       .all()
+        return render_template('index.html.jinja', users=users)
 
+@app.route('/years')
+def years():
+    with Session() as session:
+        users = session.query(User).all()
+        
+        years = list(set(map(lambda x: int(x.confirmation_number[:4]), users)))
+        return jsonify(result=years)
 
 @app.route('/check/<int:user_id>', methods=['GET', 'POST'])
 def check_captcha(user_id):
