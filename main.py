@@ -1,4 +1,4 @@
-import base64, datetime, io, time, requests, pytz
+import base64, datetime, io, time, pytz
 from os import environ
 from threading import Thread
 from dotenv import load_dotenv
@@ -177,15 +177,16 @@ class User(Base):
 def index(year = None):
     with Session() as session:
         users = session.query(User).all()
+        years = list(set(map(lambda x: int(x.confirmation_number[:4]), users)))
         
         if year is None:
-          year = max(map(lambda x: int(x.confirmation_number[:4]), users))
+          year = max(years)
         
         users = session.query(User) \
                        .filter(User.confirmation_number.startswith(year)) \
                        .order_by(User.lastname) \
                        .all()
-        return render_template('index.html.jinja', users=users)
+        return render_template('index.html.jinja', users=users, current_year=year, years=years)
 
 @app.route('/years')
 def years():

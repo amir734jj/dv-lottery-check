@@ -1,10 +1,23 @@
 {% extends "layout.jinja" %}
 
 {% block body %}
-<h3> View Users </h3>
+<h3> View Users ({{ current_year }}) </h3>
 
-<div class="pull-right" style="margin-bottom: 2rem">
-  <a href="/user/create" class="btn btn-default"> Create User </a>
+<div class="row" style="margin-bottom: 2rem">
+  <div class="col-xs-12 text-right">
+    <div class="btn-group">
+      <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+        Years <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu">
+        {% for year in years %}
+          <li><a href="/{{ year }}">{{ year }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <a href="/user/create" class="btn btn-default">Create User</a>
+  </div>
 </div>
 
 <table class="table table-bordered">
@@ -18,7 +31,7 @@
     </tr>
   </thead>
   <tbody>
-    {%for user in users%}
+    {% for user in users %}
     {% set cf_number = user.confirmation_number %}
     {% set starred_cf_number = cf_number[:4] + '*' * (cf_number|length - 8) + cf_number[-4:] %}
 
@@ -35,14 +48,13 @@
       </td>
       <td>
         {% if (user.screenshot and user.check_result) %}
-        <a class="btn btn-default" href="/user/screenshot/{{user.user_id}}" style="margin-right: 1rem; "> screenshot
-          </button>
-          {% endif %}
+        <a class="btn btn-default" href="/user/screenshot/{{ user.user_id }}" style="margin-right: 1rem;">screenshot</a>
+        {% endif %}
 
-          <a class="btn btn-primary" href="/check/{{user.user_id}}">check</button>
+        <a class="btn btn-primary" href="/check/{{ user.user_id }}">check</a>
       </td>
     </tr>
-    {%endfor%}
+    {% endfor %}
   </tbody>
 </table>
 {% endblock %}
