@@ -1,0 +1,35 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_TOKEN }}
+      APP_NAME: dv-lottery
+      HEROKU_REGISTRY: registry.heroku.com
+      HEROKU_EMAIL: hesamian@uwm.edu
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl nodejs npm
+          npm install -g heroku
+
+      - name: Login to Heroku Container Registry
+        run: heroku container:login
+
+      - name: Build and Push Docker Container to Heroku
+        run: heroku container:push --app $APP_NAME web
+
+      - name: Release Docker Container on Heroku
+        run: heroku container:release --app $APP_NAME web
