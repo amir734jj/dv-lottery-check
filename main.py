@@ -255,6 +255,16 @@ def user_screenshot(user_id):
             mimetype='image/png'
         )
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    try:
+        # Optionally, you can check if the database is accessible or any other service
+        with Session() as session:
+            # Try to query a simple operation to verify DB connection
+            session.query(User).first()
+        return jsonify(status="healthy"), 200
+    except Exception as e:
+        return jsonify(status="unhealthy", error=str(e)), 500
 
 with app.app_context():
     Base.metadata.create_all(bind=engine)
